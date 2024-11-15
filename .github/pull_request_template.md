@@ -7,9 +7,9 @@
 - [ ] Documentation
 
 
-## Example
+## Sample PR Description Format
 Implementing the code changes for migration from NSP 2.0 to NSP 3.0 <br />
 https://jira.nike.com/browse/GOLOM-47445
 - [x] Unit Tests
-- [x] Vunerability checks
+- [x] Vulnerability checks
 - [x] Documentation
