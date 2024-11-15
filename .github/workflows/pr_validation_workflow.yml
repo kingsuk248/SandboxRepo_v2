@@ -1,0 +1,84 @@
+name: PR Validation Workflow
+
+on:
+
+  pull_request:
+    types: [opened, edited, reopened]
+    branches: [main]
+    
+jobs:
+
+  Check-PR-Title-Job:
+    runs-on: ubuntu-20.04
+    steps:
+    - name : Check PR Title
+      if: ${{ github.event.pull_request.title == '' }}
+      run: |
+        echo "ERROR: The Title of your PR must not be empty !"
+        exit 1
+        
+  Check-PR-Description-Job:
+    runs-on: ubuntu-latest
+    env:
+      pr_template_message: "PR Description template:\nSummary of the PR changes\nJIRA link\nChecklist[optional]"
+    steps:
+    - name : Check if PR Description is Empty
+      if: ${{ github.event.pull_request.body == '' }}
+      run: |
+        echo "ERROR: The Description of your PR must not be empty !"
+        exit 1
+    - name : PR Description Not Empty check success
+      run: |
+        echo "SUCCESS: PR Description empty validation!"
+    - name: Check if PR description matches the required format
+      id: check_description
+      run: |
+        description="${{ github.event.pull_request.body }}"
+
+        # Remove leading/trailing whitespace and collapse multiple blank lines
+        formatted_description=$(echo "$description" | sed '/^[[:space:]]*$/d')
+
+        # Check if we have at least one non-empty line
+        lines_count=$(echo "$formatted_description" | wc -l)
+        if [ "$lines_count" -lt 1 ]; then
+          echo "$pr_template_message"
+          exit 1
+        fi
+
+        # Check if any line contains a URL starting with "https://"
+        url_found=false
+        while IFS= read -r line; do
+          if echo "$line" | grep -q '^https://jira.nike'; then
+            url_found=true
+            break
+          fi
+        done <<< "$formatted_description"
+        
+        if [ "$url_found" = false ]; then
+          echo "$pr_template_message"
+          exit 1
+        fi
+        echo "SUCCESS: PR Description URL validation!"
+
+    - name: Set status check result
+      if: failure()
+      run: exit 1
+      
+  Send-Slack-Approval-Request-Job:
+    runs-on: ubuntu-latest
+    needs: [Check-PR-Title-Job, Check-PR-Description-Job]
+    timeout-minutes: 15
+    steps:
+    - name : Send Slack Approval Request
+      id: slack
+      uses: slackapi/slack-github-action@v1.27.0
+      with:
+        payload: |
+          {
+            "author": "${{ github.actor }}",
+            "repository": "${{ github.repositoryUrl }}",
+            "title": "${{ github.event.pull_request.title }}",
+            "url": "${{ github.event.pull_request.html_url }}"
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
