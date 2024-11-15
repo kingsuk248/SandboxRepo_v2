@@ -1,0 +1,23 @@
+name: PR Approval Workflow
+
+on:
+  pull_request_review:
+    types: [submitted]
+    branches: [main]
+    
+jobs:
+  Send-Slack-Approval-Job:
+    if: github.event.review.state == 'approved'
+    runs-on: ubuntu-latest
+    steps:
+    - name : Send Slack Approval Status
+      id: slack
+      uses: slackapi/slack-github-action@v1.27.0
+      with:
+        payload: |
+          {
+            "url": "${{ github.event.pull_request.html_url }}",
+            "approver": "${{ github.actor }}"
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_1 }}
